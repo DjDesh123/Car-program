@@ -74,6 +74,7 @@ void DefaultSalesDataFromFile(struct Cars CarsInventory[], struct Sales Sales[])
 void MergeSort(void* CarsInventory, int Left, int Right, int Field);
 void Merge(void* CarsInventory, int Left, int Mid, int Right, int Field);
 void SaveNewCarToFile(struct Cars CarsInventory[]);
+int GetSizeOfCarInventoryFile(struct Cars CarsInventory[]);
 
 // Helper Functions
 
@@ -334,7 +335,7 @@ void DefaultSalesDataFromFile(struct Cars CarsInventory[],struct Sales Sales[]) 
 
 
 void LoadCarsDataFromFile(struct Cars CarsInventory[]) {
-    int Index = 0;
+    int Index = 0, StructArraySize=0;
     FILE *CarsInventoryFile = fopen(CAR_INVENTORY_FILE_NAME, "r");
 
     if (CarsInventoryFile == NULL) {
@@ -360,6 +361,9 @@ void LoadCarsDataFromFile(struct Cars CarsInventory[]) {
         }
         fclose(CarsInventoryFile);
     } else {
+
+        StructArraySize=GetSizeOfCarInventoryFile(CarsInventory);
+
         // Skip the header line
         char headerLine[256];
         fgets(headerLine, sizeof(headerLine), CarsInventoryFile);  // Read and discard the header line
@@ -368,7 +372,7 @@ void LoadCarsDataFromFile(struct Cars CarsInventory[]) {
         while (fscanf(CarsInventoryFile, "%49[^,],%d,%f,%d,%f\n",
                       CarsInventory[Index].Name, &CarsInventory[Index].Year,
                       &CarsInventory[Index].Price, &CarsInventory[Index].Stock,
-                      &CarsInventory[Index].TotalSaleValue) == 5) {
+                      &CarsInventory[Index].TotalSaleValue) == StructArraySize) {
             Index++;
         }
     }
@@ -633,24 +637,11 @@ int CarQuantity(int ChosenCarIndex,struct Cars CarsInventory[]) {
 void SellCar(struct Cars CarsInventory[],struct Sales Sales[],int CurrentSaleIndex){
     char* CarName;
     int CarYear,CarStock;
-    int i = 0,j=0;
+    int Index=0;
     float CarPrice,TotalSalesValue = 0.0f;
 
-    // to create an index of how many cars are in the struct array
-    for (i = 0; i < MAX_CARS; i++) {
-        if (strlen(CarsInventory[i].Name) > 0) {
-            printf("Car %d: %s\n", i + 1, CarsInventory[i].Name);  // Print car name
-            j++;  // Increment count of valid cars
-        }
-    }
+    Index = GetSizeOfCarInventoryFile(CarsInventory);
 
-    if (j>MAX_CARS) {
-        printf("too many cars in storage/n");
-
-        getchar();
-        getchar();
-        MainMenu(CarsInventory, Sales, CurrentSaleIndex);
-    }
 
 
     CarName = CheckValidString( "Enter name of the car you want to sell: ");
@@ -663,11 +654,11 @@ void SellCar(struct Cars CarsInventory[],struct Sales Sales[],int CurrentSaleInd
     scanf("%f",&CarPrice);
 
 
-    strcpy(CarsInventory[j-1].Name,CarName);
-    CarsInventory[j-1].Year=CarYear;
-    CarsInventory[j-1].Stock=CarStock;
-    CarsInventory[j-1].Stock=CarStock;
-    CarsInventory[j-1 ].TotalSaleValue=TotalSalesValue;
+    strcpy(CarsInventory[Index].Name,CarName);
+    CarsInventory[Index].Year=CarYear;
+    CarsInventory[Index].Stock=CarStock;
+    CarsInventory[Index].Stock=CarStock;
+    CarsInventory[Index].TotalSaleValue=TotalSalesValue;
 
     SaveNewCarToFile(CarsInventory);
 
@@ -701,6 +692,20 @@ void SaveNewCarToFile(struct Cars CarsInventory[]) {
         fprintf(CarsInventoryFile, "%s,%d,%.2f,%d,%.2f\n", CarsInventory[i].Name, CarsInventory[i].Year, CarsInventory[i].Price, CarsInventory[i].Stock,CarsInventory[i].TotalSaleValue);
     }
     fclose(CarsInventoryFile);
+
+}
+
+
+int GetSizeOfCarInventoryFile(struct Cars CarsInventory[]){
+    int i,j=0;
+    // to create an index of how many cars are in the struct array
+    for (i = 0; i < MAX_CARS; i++) {
+        if (strlen(CarsInventory[i].Name) > 0) {
+            printf("Car %d: %s\n", i + 1, CarsInventory[i].Name);  // Print car name
+            j++;  // Increment count of valid cars
+        }
+    }
+    return j - 1; //  beacuse of the header line
 
 }
 
@@ -761,10 +766,4 @@ int main() {
 // tidy the code up and seperate the sales data from the buy cars function
 
 
-// i can make an is valid char function bc its only one thing in it howeever the problem comes from making a function that takes the user input and then checks if its a proper string adn then print back how it works
-
-
-
-// finish logbook activity 4
-// and take notes of lecture week 7 and 8
 
