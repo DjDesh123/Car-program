@@ -25,7 +25,7 @@
 #define MERGE_OPTION_QUIT 4
 
 // Maximum number of cars in inventory
-#define MAX_CARS 5
+#define MAX_CARS 50
 
 #define MAX_SALES 100  // Max sales we can store
 #define NameLength 50
