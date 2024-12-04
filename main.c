@@ -22,14 +22,15 @@
 #define MERGE_OPTION_STOCK 1
 #define MERGE_OPTION_PRICE 3
 #define MERGE_OPTION_YEAR 2
-#define MERGE_OPTION_QUIT 4
+#define MERGE_OPTION_NAME 4
+#define MERGE_OPTION_QUIT 5
 
 // Maximum number of cars in inventory
 #define MAX_CARS 50
 #define MAX_SALES 100  // Max sales we can store
 #define NameLength 50 // NEED TO PUT IT IN CAPS
 
-// File name constants 
+// File name constants
 #define CAR_INVENTORY_FILE_NAME "Cars.csv"
 #define SALES_DATA_FILE_NAME "SalesData.csv"
 
@@ -69,14 +70,17 @@ char* CheckValidString(char* Question);
 int ChosenCar(struct Cars CarsInventory[]);
 int CarQuantity(int ChosenCarIndex,struct Cars CarsInventory[]);
 void LoadCarsDataFromFile(struct Cars CarsInventory[]);
-void SaveCarsDataToFile(struct Cars CarsInventory[]);
 void SaveSalesDataToFile(struct Cars CarsInventory[],struct Sales Sales[],int CurrentSaleIndex);
 void DefaultSalesDataFromFile(struct Cars CarsInventory[], struct Sales Sales[]);
 void MergeSort(void* CarsInventory, int Left, int Right, int Field);
 void Merge(void* CarsInventory, int Left, int Mid, int Right, int Field);
-void SaveNewCarToFile(struct Cars CarsInventory[]);
+void SaveCarDataToFile(struct Cars CarsInventory[]);
 int GetSizeOfCarInventoryFile(struct Cars CarsInventory[]);
-
+void SellCar(struct Cars CarsInventory[],struct Sales Sales[],int CurrentSaleIndex);
+int CompareByPrice(const void*a ,const void*b);
+int CompareByStock(const void*a ,const void*b);
+int CompareByYear(const void*a ,const void*b);
+void BinarySearch(struct Cars* CarsInventory,char* SearchElemnt,int Left ,int Right);
 // Helper Functions
 
 void ClearScreen() {
@@ -87,7 +91,7 @@ void ClearScreen() {
     #endif
 }
 
-// can use this throughout the code to deal with when a user input something incorrectly and it gets put in the buffer 
+// can use this throughout the code to deal with when a user input something incorrectly and it gets put in the buffer
 void ClearInputBuffer() {
     while (getchar() != '\n'); // Consume characters until newline
 }
@@ -133,6 +137,15 @@ int CompareByYear(const void*a ,const void*b) {
     return 0;
 }
 
+int CompareByName(const void*a ,const void*b) {
+
+    struct Cars* CarA = (struct Cars*)a;
+    struct Cars* CarB = (struct Cars*)b;
+
+
+    return strcmp(CarA->Name, CarB->Name);
+
+}
 // divide then conqor
 // MergeSort function that takes the 'field' parameter to specify sorting criteria
 void MergeSort(void* CarsInventory, int Left, int Right, int Field) {
@@ -176,8 +189,11 @@ void Merge(void* CarsInventory, int Left, int Mid, int Right, int Field) {
             CompareResult = CompareByStock(&LeftArray[i], &RightArray[j]);
         } else if (Field == 2) { // Sorting by year
             CompareResult = CompareByYear(&LeftArray[i], &RightArray[j]);
-        } else if (Field == 3) { // Sorting by price
+        } else if (Field == 3) {
+            // Sorting by price
             CompareResult = CompareByPrice(&LeftArray[i], &RightArray[j]);
+        }else if (Field == 4) {
+            CompareResult = CompareByName(&LeftArray[i], &RightArray[j]);
         }
 
         // If the left element is greater, add it to the merged array (for descending order)
@@ -210,9 +226,11 @@ void CarStock(struct Cars CarsInventory[],struct Sales Sales[],int CurrentSaleIn
     ClearScreen();
     printf("---- Car Inventory ----\n");
     printf("Model\t\tYear\tPrice\tStock\tTotal Sum\n");
-    
+
     for (int i = 0; i < MAX_CARS; i++) {
-        printf("%s\t%d\t%.2f\t%d\t%.2f\n", CarsInventory[i].Name, CarsInventory[i].Year, CarsInventory[i].Price, CarsInventory[i].Stock,CarsInventory[i].TotalSaleValue);
+        if (strlen(CarsInventory[i].Name) >0){
+            printf("%s\t%d\t%.2f\t%d\t%.2f\n", CarsInventory[i].Name, CarsInventory[i].Year, CarsInventory[i].Price, CarsInventory[i].Stock,CarsInventory[i].TotalSaleValue);
+        }
     }
 
     // Ask user for sorting criteria
@@ -220,12 +238,13 @@ void CarStock(struct Cars CarsInventory[],struct Sales Sales[],int CurrentSaleIn
     printf("1. Sort by Stock\n");
     printf("2. Sort by Year\n");
     printf("3. Sort by Price\n");
-    printf("4. Exit\n");
+    printf("4. Sort by Name\n");
+    printf("5. Exit\n");
 
 
     do{
-        SortingChoice=CheckValidInteger("Enter your choice (1-4): ");
-    
+        SortingChoice=CheckValidInteger("Enter your choice (1-5): ");
+
         switch(SortingChoice) {
             case MERGE_OPTION_STOCK:
                 Field = 1;  // Sorting by stock
@@ -236,15 +255,18 @@ void CarStock(struct Cars CarsInventory[],struct Sales Sales[],int CurrentSaleIn
             case MERGE_OPTION_PRICE:
                 Field = 3;  // Sorting by price
                 break;
+            case MERGE_OPTION_NAME:
+                Field = 4;
+                break;
             case MERGE_OPTION_QUIT:
                 MainMenu(CarsInventory, Sales, CurrentSaleIndex);
             default:
                 printf("ERROR: Enter a valid input in the range of (1-4)");
                 ClearInputBuffer();
 
-        }      
-    }while (SortingChoice < 1 || SortingChoice >5);      
-    
+        }
+    }while (SortingChoice < 1 || SortingChoice >5);
+
 
     // Call MergeSort based on the user's field choice
     MergeSort(CarsInventory, 0, MAX_CARS - 1, Field);
@@ -275,6 +297,7 @@ int CheckValidShort(char* Question) {
 }
 
 char* CheckValidString(char* Question) {
+    // the function is used recursively or when its result needs to be used after the function ends.
     static char ValidInput[50]; // to keep it and for it to not erase when the function ends
 
     ClearInputBuffer();
@@ -282,9 +305,10 @@ char* CheckValidString(char* Question) {
     printf("%s", Question);
     fgets(ValidInput, 50, stdin);
     // Remove newline character if present
+    //fgets puts a /n
     ValidInput[strcspn(ValidInput, "\n")] = 0;
     for (int i = 0; i < strlen(ValidInput); i++) {
-        if (!isalpha(ValidInput[i])) {
+        if(!(isalpha(ValidInput[i]) || ValidInput[i] == ' ')) {
             printf("Error: Invalid input. Please enter a valid character.\n");
             ClearInputBuffer();
             return CheckValidString(Question);
@@ -317,7 +341,7 @@ void DefaultSalesDataFromFile(struct Cars CarsInventory[],struct Sales Sales[]) 
         }
 
         SalesDataFile = fopen(SALES_DATA_FILE_NAME, "w");
-        
+
         // Write CSV headers
         fprintf(SalesDataFile, "SaleIndex,SaleAmount,CarModel,CarQuantity,Discount,CustomerName,CustomerRating,CustomerFeedback,DateOfPurchase\n");
 
@@ -335,7 +359,7 @@ void DefaultSalesDataFromFile(struct Cars CarsInventory[],struct Sales Sales[]) 
                     Sales[Index].DateOfPurchase);
         }
         fclose(SalesDataFile);
-        
+
     }else {
         fclose(SalesDataFile);
     }
@@ -344,8 +368,8 @@ void DefaultSalesDataFromFile(struct Cars CarsInventory[],struct Sales Sales[]) 
 
 
 void LoadCarsDataFromFile(struct Cars CarsInventory[]) {
-    int Index = 0, StructArraySize=0;
-    
+    int Index = 0;
+
     FILE *CarsInventoryFile = fopen(CAR_INVENTORY_FILE_NAME, "r");
 
     if (CarsInventoryFile == NULL) {
@@ -353,13 +377,13 @@ void LoadCarsDataFromFile(struct Cars CarsInventory[]) {
         printf("Creating car inventory file with default cars.\n");
 
         struct Cars DefaultCars[MAX_CARS] = {
-            {"BMW Three Series", 2019, 45000.00, 4,450000.00},
-            {"Audi RS3", 2017, 30000.00, 5,270000.00},
-            {"Audi TT RS", 2019, 36000.00, 8,5000000.00},
-            {"Audi RS7", 2021, 70000.00, 10,6000000.00},
+            {"Volkswagen Passat", 2019, 45000.00, 4,450000.00},
+            {"Ford Mustang", 2017, 30000.00, 5,270000.00},
+            {"Chevrolet Impala", 2019, 36000.00, 8,5000000.00},
+            {"Honda Civic", 2021, 70000.00, 10,6000000.00},
             {"VW Golf R", 2024, 37000.00, 14,890000.00}
         };
-        
+
         for ( Index = 0; Index < MAX_CARS; Index++) {
             CarsInventory[Index] = DefaultCars[Index];
         }
@@ -370,34 +394,31 @@ void LoadCarsDataFromFile(struct Cars CarsInventory[]) {
         for (Index = 0; Index < MAX_CARS; Index++) {
             fprintf(CarsInventoryFile, "%s,%d,%.2f,%d,%.2f\n", CarsInventory[Index].Name, CarsInventory[Index].Year, CarsInventory[Index].Price, CarsInventory[Index].Stock,CarsInventory[Index].TotalSaleValue);
         }
-        
+
         fclose(CarsInventoryFile);
-        
+
+
     }else {
-
-        StructArraySize=GetSizeOfCarInventoryFile(CarsInventory);
-
         // Skip the header line
         char headerLine[256];
         fgets(headerLine, sizeof(headerLine), CarsInventoryFile);  // Read and discard the header line
 
-        // Read the rest of the data into the CarsInventory array
+        // Read the rest of the lines
         while (fscanf(CarsInventoryFile, "%49[^,],%d,%f,%d,%f\n",
-                      CarsInventory[Index].Name, &CarsInventory[Index].Year,
-                      &CarsInventory[Index].Price, &CarsInventory[Index].Stock,
-                      &CarsInventory[Index].TotalSaleValue) == StructArraySize) {
-            Index++;
-        }
-    }
-}
-// SOMEHOW MADE A DUPLICATE FUNCTION THAT DOES THE EXACT SAME THING SO GONNA REMOVE ONE AND THEN ADD THE SECOND ONE IWTH ALL THE IFLES AND MAKE IT A LOT NEATER BECAUSE THATS SO DUMB TO DO
+                      CarsInventory[Index].Name,
+                      &CarsInventory[Index].Year,
+                      &CarsInventory[Index].Price,
+                      &CarsInventory[Index].Stock,
+                      &CarsInventory[Index].TotalSaleValue) == 5) {
+            Index++;  // Move to the next entry in the array
+                      }
 
-void SaveCarsDataToFile(struct Cars CarsInventory[]) {
-    FILE *CarsInventoryFile = fopen(CAR_INVENTORY_FILE_NAME, "w");
-    for (int Index = 0; Index < MAX_CARS; Index++) {
-        fprintf(CarsInventoryFile, "%s,%d,%.2f,%d\n", CarsInventory[Index].Name, CarsInventory[Index].Year, CarsInventory[Index].Price, CarsInventory[Index].Stock);
+        fclose(CarsInventoryFile);
+        printf("Loaded cars from the file.\n");
     }
-    fclose(CarsInventoryFile);
+
+
+
 }
 
 void SaveSalesDataToFile(struct Cars CarsInventory[],struct Sales Sales[],int CurrentSaleIndex) {
@@ -423,6 +444,22 @@ void SaveSalesDataToFile(struct Cars CarsInventory[],struct Sales Sales[],int Cu
     fclose(SalesDataFile);
 }
 
+void SaveCarDataToFile(struct Cars CarsInventory[]) {
+    FILE* CarsInventoryFile = fopen(CAR_INVENTORY_FILE_NAME, "w");
+
+    if (CarsInventoryFile == NULL) {
+        printf("Unable to open file %s\n", CAR_INVENTORY_FILE_NAME);
+        return;
+    }
+
+    fprintf(CarsInventoryFile,"Car Name,Year,Price,Stock,Total Sales Value\n");
+
+    for (int i = 0; i < MAX_CARS; i++) {
+        fprintf(CarsInventoryFile, "%s,%d,%.2f,%d,%.2f\n", CarsInventory[i].Name, CarsInventory[i].Year, CarsInventory[i].Price, CarsInventory[i].Stock,CarsInventory[i].TotalSaleValue);
+    }
+    fclose(CarsInventoryFile);
+
+}
 
 void SalesStats(struct Cars CarsInventory[], struct Sales Sales[], int CurrentSaleIndex) {
     int Index = 0;
@@ -461,20 +498,22 @@ void SalesStats(struct Cars CarsInventory[], struct Sales Sales[], int CurrentSa
             Sales[Index].CustomerFeedback,
             Sales[Index].DateOfPurchase);
 
-        // Print each sale data in the same CSV format
-        printf("Sale Index: %d\n", Sales[Index].SaleIndex);
-        printf("Sale Amount: %.2f\n", Sales[Index].SaleAmount);
-        printf("Car Model: %s\n", CarsInventory[Sales[Index].CarIndex].Name);
-        printf("Quantity: %d\n", Sales[Index].CarQuantity);
-        printf("Discount: %s\n", Sales[Index].DiscountGivenText);
-        printf("Customer Name: %s\n", Sales[Index].CustomerName);
-        printf("Customer Rating: %d\n", Sales[Index].CustomerRating);
-        printf("Customer Feedback: %s\n", Sales[Index].CustomerFeedback);
-        printf("Date Of Purchase: %s\n", Sales[Index].DateOfPurchase);
-        printf("\n------------------------------------\n");
+        if (CarsInventory[Index].Name >0) {
+            // Print each sale data in the same CSV format
+            printf("Sale Index: %d\n", Sales[Index].SaleIndex);
+            printf("Sale Amount: %.2f\n", Sales[Index].SaleAmount);
+            printf("Car Model: %s\n", CarsInventory[Sales[Index].CarIndex].Name);
+            printf("Quantity: %d\n", Sales[Index].CarQuantity);
+            printf("Discount: %s\n", Sales[Index].DiscountGivenText);
+            printf("Customer Name: %s\n", Sales[Index].CustomerName);
+            printf("Customer Rating: %d\n", Sales[Index].CustomerRating);
+            printf("Customer Feedback: %s\n", Sales[Index].CustomerFeedback);
+            printf("Date Of Purchase: %s\n", Sales[Index].DateOfPurchase);
+            printf("\n------------------------------------\n");
 
-        // Increment the index for the next sale
-        Index++;
+            // Increment the index for the next sale
+            Index++;
+        }
     }
 
     fclose(SalesDataFile);
@@ -485,7 +524,7 @@ void SalesStats(struct Cars CarsInventory[], struct Sales Sales[], int CurrentSa
     MainMenu(CarsInventory, Sales, CurrentSaleIndex);
 }
 
-// I have wrote all the code togehter but realisticallyi feel like if im having a variable called Applied discount i should create a switch statmenet and split the maths form the outputs then i can use the default as a debug message 
+// I have wrote all the code togehter but realisticallyi feel like if im having a variable called Applied discount i should create a switch statmenet and split the maths form the outputs then i can use the default as a debug message
 float CalculateDiscount(float TotalPrice, char *DiscountMessage) {
     unsigned short UserAge = 0;
     char HasCompanyCard;
@@ -495,11 +534,11 @@ float CalculateDiscount(float TotalPrice, char *DiscountMessage) {
 
     do {
         UserAge = CheckValidShort("How old are you? ");
-        
+
         if (UserAge < 0) {
             printf("Error: Age cannot be negative. Please enter a valid positive number.\n");
         }
-        
+
         if (UserAge >= DISCOUNT_MIN_AGE && UserAge <= DISCOUNT_MAX_AGE) {
             DiscountApplied = 1;
             TotalPrice *= (1 - DISCOUNT_PERCENTAGE);
@@ -527,7 +566,7 @@ float CalculateDiscount(float TotalPrice, char *DiscountMessage) {
 
     return TotalPrice;
 }
-// This function can be broken down a lot more and be more neat if i remove some stuff and put it in a complete different function 
+// This function can be broken down a lot more and be more neat if i remove some stuff and put it in a complete different function
 void BuyCars(struct Cars CarsInventory[], struct Sales Sales[], int CurrentSaleIndex) {
     ClearScreen();
 
@@ -541,7 +580,7 @@ void BuyCars(struct Cars CarsInventory[], struct Sales Sales[], int CurrentSaleI
     printf("We are thrilled that you've decided to buy a car with us!\n\n");
 
     for (int i = 0; i < MAX_CARS; i++) {
-        TotalStock += CarsInventory[i].Stock;
+            TotalStock += CarsInventory[i].Stock;
     }
 
     if (TotalStock == 0) {
@@ -566,7 +605,7 @@ void BuyCars(struct Cars CarsInventory[], struct Sales Sales[], int CurrentSaleI
     CarsInventory[ChosenCarIndex].TotalSaleValue += TotalPrice;
 
     CarsInventory[ChosenCarIndex].Stock -= ChosenCarQuantity;
-    SaveCarsDataToFile(CarsInventory);
+    SaveCarDataToFile(CarsInventory);
 
     Sales[CurrentSaleIndex].SaleIndex = CurrentSaleIndex + 1;
     Sales[CurrentSaleIndex].SaleAmount = TotalPrice;
@@ -575,7 +614,7 @@ void BuyCars(struct Cars CarsInventory[], struct Sales Sales[], int CurrentSaleI
     strcpy(Sales[CurrentSaleIndex].CustomerName, CustomerName);
     strcpy(Sales[CurrentSaleIndex].DiscountGivenText, DiscountMessage);
 
-    // Seperate this into a different function 
+    // Seperate this into a different function
     do{
         UserRating = CheckValidInteger("Rate the service between 1-5 ");
         if (UserRating < 1 || UserRating > 5){
@@ -624,9 +663,11 @@ void BuyCars(struct Cars CarsInventory[], struct Sales Sales[], int CurrentSaleI
 
 int ChosenCar(struct Cars CarsInventory[]) {
     int ChosenCarIndex = 0;
-    
+
     for (int i = 0; i < MAX_CARS; i++) {
-        printf("%d. %s\n", i + 1, CarsInventory[i].Name);
+        if(strlen(CarsInventory[i].Name) > 0) {
+            printf("%d. %s\n", i + 1, CarsInventory[i].Name);
+        }
     }
 
     do {
@@ -643,14 +684,14 @@ int CarQuantity(int ChosenCarIndex,struct Cars CarsInventory[]) {
     int CarQuantity = 0;
 
     printf("There are %d available currently\n", CarsInventory[ChosenCarIndex].Stock);
-    
+
     do {
         CarQuantity = CheckValidInteger("Enter how many cars you want to buy: ");
-        
+
         if (CarQuantity < 1 || CarQuantity > CarsInventory[ChosenCarIndex].Stock) {
             printf("Error: Invalid input. Please enter a number between 1 and %d.\n", CarsInventory[ChosenCarIndex].Stock);
         }
-        
+
     } while (CarQuantity < 1 || CarQuantity > CarsInventory[ChosenCarIndex].Stock);
 
     return CarQuantity;
@@ -663,29 +704,37 @@ void SellCar(struct Cars CarsInventory[],struct Sales Sales[],int CurrentSaleInd
     float CarPrice,TotalSalesValue = 0.0f;
 
     Index = GetSizeOfCarInventoryFile(CarsInventory);
+    MergeSort(CarsInventory, 0, Index-1 - 1, 4);
 
-    // collects the new car's data 
+    for (int i = 0; i < MAX_CARS; i++) {
+        if (strlen(CarsInventory[i].Name) >0){
+            printf("%s\t%d\t%.2f\t%d\t%.2f\n", CarsInventory[i].Name, CarsInventory[i].Year, CarsInventory[i].Price, CarsInventory[i].Stock,CarsInventory[i].TotalSaleValue);
+        }
+    }
+
+    // collects the new car's data
 
     CarName = CheckValidString( "Enter name of the car you want to sell: ");
+    BinarySearch(CarsInventory,CarName,0,Index-1);
 
-    CarYear=CheckValidInteger("Enter year of the car you want to sell: ");
+    CarYear=CheckValidInteger("Enter the year of the car you want to sell: ");
 
     CarStock = CheckValidInteger("Enter how many cars you want to sell: ");
 
-    // Might wanna make a check for valid float but i dont know if thats really needed 
+    // Might wanna make a check for valid float but i dont know if thats really needed
     // i would need to add edge casing to here if i dont add the verifier function
     printf("What is the Car's Price ");
     scanf("%f",&CarPrice);
 
 
-    // also put this in a different function 
+    // also put this in a different function
     strcpy(CarsInventory[Index].Name,CarName);
     CarsInventory[Index].Year=CarYear;
     CarsInventory[Index].Stock=CarStock;
     CarsInventory[Index].Stock=CarStock;
     CarsInventory[Index].TotalSaleValue=TotalSalesValue;
 
-    SaveNewCarToFile(CarsInventory);
+    SaveCarDataToFile(CarsInventory);
 
 
 
@@ -696,36 +745,39 @@ void SellCar(struct Cars CarsInventory[],struct Sales Sales[],int CurrentSaleInd
 
 }
 
-void SaveNewCarToFile(struct Cars CarsInventory[]) {
-    FILE* CarsInventoryFile = fopen(CAR_INVENTORY_FILE_NAME, "w");
 
-    if (CarsInventoryFile == NULL) {
-        printf("Unable to open file %s\n", CAR_INVENTORY_FILE_NAME);
-        return;
-    }
-
-    fprintf(CarsInventoryFile,"Car Name,Year,Price,Stock,Total Sales Value\n");
-
-    for (int i = 0; i < MAX_CARS; i++) {
-        fprintf(CarsInventoryFile, "%s,%d,%.2f,%d,%.2f\n", CarsInventory[i].Name, CarsInventory[i].Year, CarsInventory[i].Price, CarsInventory[i].Stock,CarsInventory[i].TotalSaleValue);
-    }
-    fclose(CarsInventoryFile);
-
-}
-
-// ADD AN IF STATEMENT HERE TO SAY IFTHE J IS GREATER THAN MAX CARS THEN SAY THERES NO ROOM LEFT 
+// ADD AN IF STATEMENT HERE TO SAY IFTHE J IS GREATER THAN MAX CARS THEN SAY THERES NO ROOM LEFT
 int GetSizeOfCarInventoryFile(struct Cars CarsInventory[]){
     int i,j=0;
     // to create an index of how many cars are in the struct array
     for (i = 0; i < MAX_CARS; i++) {
-        if (strlen(CarsInventory[i].Name) > 0) {
-            printf("Car %d: %s\n", i + 1, CarsInventory[i].Name);  // Print car name
+        if (strlen(CarsInventory[i].Name) > 0) {// Print car name
             j++;  // Increment count of valid cars
         }
     }
-    return j - 1; //  beacuse of the header line
+    return j-1; //  beacuse of the header line
 
 }
+// return one if found then go to car Sales and go if car found ask question if not then dont and allow to write a new entry
+void BinarySearch(struct Cars* CarsInventory, char* SearchElement, int Left, int Right) {
+    if (Left > Right) {
+        printf("Not found!\n");
+        return;
+    }
+
+    int Middle = (Left + Right) / 2;
+    printf("Comparing '%s' with '%s'\n", CarsInventory[Middle].Name, SearchElement);
+    int Target = strcmp(CarsInventory[Middle].Name, SearchElement);
+
+    if (Target == 0) {
+        printf("Found '%s' at index %d!\n", SearchElement, Middle);
+    } else if (Target > 0) {
+        BinarySearch(CarsInventory, SearchElement, Left, Middle - 1);
+    } else {
+        BinarySearch(CarsInventory, SearchElement, Middle + 1, Right);
+    }
+}
+
 
 void MainMenu(struct Cars CarsInventory[], struct Sales Sales[], int CurrentSaleIndex) {
     ClearScreen();
@@ -739,7 +791,7 @@ void MainMenu(struct Cars CarsInventory[], struct Sales Sales[], int CurrentSale
 
     int Choice = CheckValidInteger("Please select an option (1-5): ");
 
-    // added breaks to prevent fall throughs 
+    // added breaks to prevent fall throughs
     switch (Choice) {
         case MENU_OPTION_VIEW_CAR_STOCK:
             CarStock(CarsInventory,Sales,CurrentSaleIndex);
@@ -766,7 +818,7 @@ int main() {
     // Declare sales array and current sale index
     struct Sales Sales[MAX_SALES];
 
-    // would like a way to remove this variable as a different route that i took makes this redundant 
+    // would like a way to remove this variable as a different route that i took makes this redundant
     int CurrentSaleIndex = 0;
 
     // The inventory of cars
@@ -788,5 +840,5 @@ int main() {
 
 // with the way i keep track of the Car Inventory file i can keep the same track on the sales and then i wont actually need the int CurrentSaleIndex (I think)
 
-
-
+// used sscanf so i can know ahead of times how amny cars was imported
+//strcpy is 0 if eact ,1 when string 2 is higher than string one and woul dbe -1 if string 1 is higer
