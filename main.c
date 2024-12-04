@@ -271,9 +271,11 @@ void CarStock(struct Cars CarsInventory[],struct Sales Sales[],int CurrentSaleIn
     // Call MergeSort based on the user's field choice
     MergeSort(CarsInventory, 0, MAX_CARS - 1, Field);
 
+    // acesses the CarStock FUNCTION
     CarStock(CarsInventory,Sales,CurrentSaleIndex);
 }
 
+// checks if valid integer
 int CheckValidInteger(char* Question) {
     int ValidInput;
     printf("%s", Question);

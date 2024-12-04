@@ -1,0 +1,6 @@
+SaleIndex,SaleAmount,CarModel,CarQuantity,Discount,CustomerName,CustomerRating,CustomerFeedback,DateOfPurchase
+1,36000.00,BMW Three Series,1,20% discount applied,John Doe,5,Excellent purchase!,2024-11-25 23:26:53
+2,24000.00,Audi RS3,2,10% discount applied,Jane Smith,4,Very satisfied,2024-11-24 15:22:10
+1,29600.00,VW Golf R,1,20% discount applied.,de,1,No Description Given,2024-12-03 18:10:51
+1,29600.00,VW Golf R,1,20% discount applied.,de,5,THIS CODE SHOULD WORK,2024-12-04 11:02:53
+1,28800.00,Chevrolet Impala,1,20% discount applied.,Deshawn,5,This code works,2024-12-04 11:41:28
