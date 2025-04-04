@@ -24,7 +24,7 @@ The project allowed me to learn how to structure code, manage data using structs
 
 In the future, I plan to refactor the code for better organization by splitting it into separate files and adding more documentation, including unit testing.
 
-Ho## How to Run
+## How to Run
 
 1. Compile the program:  
    `gcc -o Car-program main.c`
