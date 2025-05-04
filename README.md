@@ -31,3 +31,6 @@ In the future, I plan to refactor the code for better organization by splitting 
 
 2. Run the program:  
    `./Car-program`
+
+## refactoring 
+next time i would like to really delve deep into c and learn allnthese concepts way more efficently and make something more user friendly.
